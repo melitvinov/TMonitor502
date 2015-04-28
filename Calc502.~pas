@@ -233,13 +233,15 @@ begin
   ATimer:=0; BTimer:=0;
   tMin:=MinuteOfTheDay(tTime);
   Result:=False;
-  tempMin := 1440;
+  tempMin := 0;
   tempMax := 1440;
+  nTmin := 0;
+  nTmax := 0;
   for nTim:=1 to CountX do
     with pTimers^[nTim] do
       begin
         if (pTimers^[nTim].StartTime=0) or (pTimers^[nTim].T=0) then continue;
-        if (tMin > pTimers^[nTim].StartTime) and (pTimers^[nTim].StartTime <= tempMin) then
+        if (tMin > pTimers^[nTim].StartTime) and (pTimers^[nTim].StartTime >= tempMin) then
           begin
             tempMin := pTimers^[nTim].StartTime;
             nTmin:=nTim;
@@ -258,9 +260,7 @@ begin
     begin
       d:=pTimers^[BTimer].StartTime-pTimers^[ATimer].EndTime;
       if d=0 then d:=0 else d:=(tMin-pTimers^[ATimer].EndTime)/d;
-//todo      with ParentCtr as TFClimat502 do CalcStrategyBlock.GetStgFromName(pTimers^[ATimer].Stg);
-      end;
-//  with ParentCtr as TFClimat502 do
+    end;
    for nTim:=1 to CountY do //TaskCount do
       begin
       if ConstNames[nTim].Tag<=0 then continue;
@@ -342,7 +342,32 @@ var ChartBl:TChart;
     st:string;
     i,j:integer;
     temp,ttemp:Double;
+
+    nTmin, nTmax:integer;
+    tempMin,tempMax:double;
 begin
+  // search min and max timers for Chart
+  tempMin := 1440;
+  tempMax := 0;
+  nTmin := 0;
+  nTmax := 0;
+  for iX:=1 to CountX do
+  begin
+    dbStart := LoadXYvirt(cOutBlock, iX, 3,st);
+    dbTypeStart := Round(LoadXYvirt(cOutBlock, iX, 2,st));
+    LoadXYvirt(cOutBlock, iX, 5,dbStrategSet);
+    if (dbStart=0) or (dbTempSet=0) or (dbStrategSet='') then continue;
+    if tempMax < dbStart then
+      begin
+        tempMax := dbStart;
+        nTmin:=iX;
+      end;
+    if tempMin > dbStart then
+      begin
+        tempMin := dbStart;
+        nTmax:=iX;
+      end;
+  end;
   // show in the ChartBl from array
   ChartBl:=Any.Ptr;
   with ChartBl do
@@ -380,7 +405,9 @@ begin
             begin
               temp := LoadXYvirt(cOutBlock, i, 3,st);  j:=i;
             end;
-          AddXY(24*60*cMin,LoadXYvirt(cOutBlock, j, Row,st),'',clTeeColor);
+          st := FloatToStr( LoadXYvirt(cOutBlock, nTmax, Row,st)+( (LoadXYvirt(cOutBlock, nTmin, Row,st) - LoadXYvirt(cOutBlock, nTmax, Row,st) )/( LoadXYvirt(cOutBlock, nTmin, 3,st)+24 - LoadXYvirt(cOutBlock, nTmax, 3,st)))*(24 - LoadXYvirt(cOutBlock, nTmax, 3,st)) );
+          AddXY(24*cMin, StrToFloat(st),'',clTeeColor);
+          AddXY(0, StrToFloat(st),'',clTeeColor);
         end;
     end;
   end;
